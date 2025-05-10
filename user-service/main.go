@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -19,6 +20,13 @@ import (
 type server struct {
 	pb.UnimplementedUserServiceServer
 	db *sql.DB
+}
+
+// Структура пользователя для HTTP и JSON
+type User struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 func main() {
@@ -49,11 +57,66 @@ func main() {
 
 	// REST (minimal)
 	mux := http.NewServeMux()
+
+	// Маршрут для создания пользователя
+	mux.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			var user User
+			// Декодируем тело запроса
+			err := json.NewDecoder(r.Body).Decode(&user)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			// Сохранение пользователя в базе данных
+			_, err = db.Exec("INSERT INTO users (name, email) VALUES ($1, $2)", user.Name, user.Email)
+			if err != nil {
+				http.Error(w, "Error saving user to the database", http.StatusInternalServerError)
+				return
+			}
+
+			// Ответ о успешном создании
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte("User " + user.Name + " created"))
+		} else if r.Method == http.MethodGet {
+			// Обработка GET-запроса для получения всех пользователей
+			rows, err := db.Query("SELECT id, name, email FROM users")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer rows.Close()
+
+			var users []User
+			for rows.Next() {
+				var user User
+				if err := rows.Scan(&user.ID, &user.Name, &user.Email); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				users = append(users, user)
+			}
+
+			// Устанавливаем тип контента как JSON
+			w.Header().Set("Content-Type", "application/json")
+
+			// Возвращаем список пользователей в формате JSON
+			if err := json.NewEncoder(w).Encode(users); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		} else {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// Проверка здоровья сервиса
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
 
+	// HTTP сервер
 	srv := &http.Server{
 		Addr:    ":" + httpPort,
 		Handler: mux,
@@ -76,6 +139,7 @@ func main() {
 	g.GracefulStop()
 }
 
+// Утилита для получения переменных окружения с дефолтными значениями
 func getenv(k, def string) string {
 	v := os.Getenv(k)
 	if v == "" {
