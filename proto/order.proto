@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "github.com/example/microservices/pb";
+
+import "google/protobuf/empty.proto";
+
+message Order {
+  uint64 id = 1;
+  uint64 user_id = 2;
+  repeated uint64 product_ids = 3;
+  double total = 4;
+}
+
+message GetOrderRequest  { uint64 id = 1; }
+message ListOrdersRequest { }
+message CreateOrderRequest { uint64 user_id = 1; repeated uint64 product_ids = 2; }
+message DeleteOrderRequest { uint64 id = 1; }
+
+service OrderService {
+  rpc GetOrder(GetOrderRequest) returns (Order);
+  rpc ListOrders(ListOrdersRequest) returns (stream Order);
+  rpc CreateOrder(CreateOrderRequest) returns (Order);
+  rpc DeleteOrder(DeleteOrderRequest) returns (google.protobuf.Empty);
+}

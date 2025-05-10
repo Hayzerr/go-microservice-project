@@ -1,0 +1,5 @@
+go 1.22
+
+directory ./user-service
+directory ./product-service
+directory ./order-service

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "github.com/example/microservices/pb";
+
+import "google/protobuf/empty.proto";
+
+message User {
+  uint64 id = 1;
+  string name = 2;
+  string email = 3;
+}
+
+message GetUserRequest  { uint64 id = 1; }
+message ListUsersRequest { }
+message CreateUserRequest { string name = 1; string email = 2; }
+message UpdateUserRequest { uint64 id = 1; string name = 2; string email = 3; }
+message DeleteUserRequest { uint64 id = 1; }
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc ListUsers(ListUsersRequest) returns (stream User);
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty);
+}
