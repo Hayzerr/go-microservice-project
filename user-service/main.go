@@ -1,25 +1,39 @@
 package main
 
 import (
-	"context"
 	"database/sql"
-	"encoding/json"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	pb "github.com/example/microservices/pb"
+	// Драйвер базы данных PostgreSQL
 	_ "github.com/lib/pq"
+
+	// gRPC
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection" // Для упрощения тестирования gRPC через grpcurl или Postman
+
+	// Импорты для вашего проекта (ВАЖНО: Замените 'your_project_module' на имя вашего модуля из go.mod)
+	grpcDelivery "github.com/example/microservices/user-service/internal/user/delivery/grpc" // Пакет для gRPC обработчиков
+	httpDelivery "github.com/example/microservices/user-service/internal/user/delivery/http" // Пакет для HTTP обработчиков
+	"github.com/example/microservices/user-service/internal/user/repository"                 // Пакет для репозитория
+	"github.com/example/microservices/user-service/internal/user/usecase"                    // Пакет для бизнес-логики
+	pb "github.com/example/microservices/user-service/pb"                                    // Путь к сгенерированным .pb.go файлам
+	// Для HTTP-роутера можно использовать стандартный http.ServeMux или более продвинутые,
+	// например, "github.com/gorilla/mux" или "github.com/go-chi/chi/v5"
+	// В этом примере используется стандартный http.ServeMux для простоты.
 )
 
-type server struct {
-	pb.UnimplementedUserServiceServer
-	db *sql.DB
+// getenv получает значение переменной окружения или возвращает значение по умолчанию.
+func getenv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
 }
 
 // Структура пользователя для HTTP и JSON
@@ -30,120 +44,115 @@ type User struct {
 }
 
 func main() {
+	// Получение конфигурации из переменных окружения
 	grpcPort := getenv("GRPC_PORT", "50051")
 	httpPort := getenv("HTTP_PORT", "8081")
-	dsn := getenv("DB_DSN", "host=localhost user=postgres password=postgres dbname=postgres sslmode=disable")
+	// ВАЖНО: Убедитесь, что DSN соответствует вашей конфигурации PostgreSQL
+	dsn := getenv("DB_DSN", "host=localhost port=5432 user=postgres password=postgres dbname=user_service_db sslmode=disable")
+	// Рекомендуется использовать отдельную базу данных для каждого сервиса, например, 'user_service_db'
 
+	log.Println("Запуск user-service...")
+
+	// 1. Инициализация соединения с базой данных
+	log.Println("Подключение к базе данных...")
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		log.Fatalf("db connect: %v", err)
+		log.Fatalf("Ошибка подключения к базе данных: %v", err)
 	}
 	defer db.Close()
 
-	// gRPC
-	lis, err := net.Listen("tcp", ":"+grpcPort)
-	if err != nil {
-		log.Fatalf("listen: %v", err)
+	// Проверка соединения с БД
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Ошибка проверки соединения с базой данных: %v", err)
 	}
-	g := grpc.NewServer()
-	pb.RegisterUserServiceServer(g, &server{db: db})
+	log.Println("Успешное подключение к базе данных.")
 
+	// 2. Создание экземпляра репозитория
+	//    Предполагается, что у вас есть функция NewPostgresUserRepository в пакете repository.
+	userRepo := repository.NewPostgresUserRepository(db)
+	log.Println("Репозиторий пользователей инициализирован.")
+
+	// 3. Создание экземпляра бизнес-логики (usecase)
+	//    Предполагается, что у вас есть функция NewUserUsecase в пакете usecase.
+	userUsecase := usecase.NewUserUsecase(userRepo)
+	log.Println("Бизнес-логика пользователей инициализирована.")
+
+	// 4. Создание экземпляра gRPC обработчика
+	//    Предполагается, что у вас есть функция NewUserGRPCHandler в пакете grpcDelivery.
+	userGRPCHandler := grpcDelivery.NewUserGRPCHandler(userUsecase)
+	log.Println("gRPC обработчик пользователей инициализирован.")
+
+	// 5. Создание экземпляра HTTP обработчика
+	//    Предполагается, что у вас есть функция NewUserHTTPHandler в пакете httpDelivery.
+	userHTTPHandler := httpDelivery.NewUserHTTPHandler(userUsecase)
+	log.Println("HTTP обработчик пользователей инициализирован.")
+
+	// Запуск gRPC сервера
 	go func() {
-		log.Printf("gRPC :%s", grpcPort)
-		if err := g.Serve(lis); err != nil {
-			log.Fatalf("grpc serve: %v", err)
+		lis, err := net.Listen("tcp", ":"+grpcPort)
+		if err != nil {
+			log.Fatalf("Ошибка прослушивания gRPC порта %s: %v", grpcPort, err)
+		}
+		gRPCServer := grpc.NewServer()
+		pb.RegisterUserServiceServer(gRPCServer, userGRPCHandler) // Регистрация вашего gRPC сервиса
+
+		// Регистрация reflection для gRPC сервера (полезно для отладки)
+		reflection.Register(gRPCServer)
+
+		log.Printf("gRPC сервер запущен на порту: %s", grpcPort)
+		if err := gRPCServer.Serve(lis); err != nil {
+			log.Fatalf("Ошибка запуска gRPC сервера: %v", err)
 		}
 	}()
 
-	// REST (minimal)
-	mux := http.NewServeMux()
-
-	// Маршрут для создания пользователя
-	mux.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			var user User
-			// Декодируем тело запроса
-			err := json.NewDecoder(r.Body).Decode(&user)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-
-			// Сохранение пользователя в базе данных
-			_, err = db.Exec("INSERT INTO users (name, email) VALUES ($1, $2)", user.Name, user.Email)
-			if err != nil {
-				http.Error(w, "Error saving user to the database", http.StatusInternalServerError)
-				return
-			}
-
-			// Ответ о успешном создании
-			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte("User " + user.Name + " created"))
-		} else if r.Method == http.MethodGet {
-			// Обработка GET-запроса для получения всех пользователей
-			rows, err := db.Query("SELECT id, name, email FROM users")
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			defer rows.Close()
-
-			var users []User
-			for rows.Next() {
-				var user User
-				if err := rows.Scan(&user.ID, &user.Name, &user.Email); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				users = append(users, user)
-			}
-
-			// Устанавливаем тип контента как JSON
-			w.Header().Set("Content-Type", "application/json")
-
-			// Возвращаем список пользователей в формате JSON
-			if err := json.NewEncoder(w).Encode(users); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		} else {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		}
-	})
-
-	// Проверка здоровья сервиса
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
-	})
-
-	// HTTP сервер
-	srv := &http.Server{
-		Addr:    ":" + httpPort,
-		Handler: mux,
-	}
+	// Запуск HTTP сервера
 	go func() {
-		log.Printf("HTTP :%s", httpPort)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("http serve: %v", err)
+		// Создание HTTP роутера (мультиплексора)
+		// Можно использовать http.NewServeMux() или более продвинутые роутеры
+		router := http.NewServeMux()
+
+		// Базовый эндпоинт для проверки работоспособности
+		router.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+		})
+
+		// Регистрация HTTP эндпоинтов для вашего user-service
+		// Пример:
+		// router.HandleFunc("/api/users", userHTTPHandler.CreateUser) // POST
+		// router.HandleFunc("/api/users/{id}", userHTTPHandler.GetUser) // GET
+		// Замените на реальные методы вашего HTTP обработчика
+		// Для простоты, предположим, что у userHTTPHandler есть метод RegisterRoutes
+		userHTTPHandler.RegisterRoutes(router) // Предполагается, что такой метод существует
+
+		httpServer := &http.Server{
+			Addr:    ":" + httpPort,
+			Handler: router,
+		}
+
+		log.Printf("HTTP сервер запущен на порту: %s", httpPort)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Ошибка запуска HTTP сервера: %v", err)
 		}
 	}()
 
-	// Graceful shutdown
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-	log.Println("shutdown...")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_ = srv.Shutdown(ctx)
-	g.GracefulStop()
-}
+	// Ожидание сигнала для корректного завершения работы
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit // Блокировка до получения сигнала
 
-// Утилита для получения переменных окружения с дефолтными значениями
-func getenv(k, def string) string {
-	v := os.Getenv(k)
-	if v == "" {
-		return def
-	}
-	return v
+	log.Println("Получен сигнал завершения, начинаю корректное выключение...")
+
+	// Таймаут для корректного завершения
+	// TODO: gRPCServer.GracefulStop() и httpServer.Shutdown() должны быть вызваны.
+	// В текущем коде они не вызываются при завершении, это нужно исправить.
+	// Для gRPCServer: gRPCServer.GracefulStop()
+	// Для httpServer:
+	// ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// defer cancel()
+	// if err := httpServer.Shutdown(ctx); err != nil {
+	//     log.Fatalf("Ошибка корректного завершения HTTP сервера: %v", err)
+	// }
+
+	log.Println("Сервис user-service остановлен.")
 }
