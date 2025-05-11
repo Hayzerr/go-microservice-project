@@ -16,4 +16,4 @@ require (
 	google.golang.org/protobuf v1.34.1 // indirect
 )
 
-replace github.com/example/microservices/pb => ./pb
+replace github.com/example/microservices/pb => ../pb
