@@ -5,20 +5,19 @@ import (
 	"errors" // Для проверки типов ошибок из usecase
 
 	// ВАЖНО: Замените 'your_project_module' на имя вашего модуля из go.mod
-	pb "your_project_module/pb" // Сгенерированные proto-файлы
-	"your_project_module/internal/user/models"
-	"your_project_module/internal/user/usecase"
+	pb "github.com/Hayzerr/go-microservice-project/pb" // Сгенерированные proto-файлы
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/models"
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/usecase"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb" // Для преобразования time.Time в google.protobuf.Timestamp
-	"google.golang.org/protobuf/types/known/wrapperspb"  // Для StringValue
 )
 
 // UserGRPCHandler реализует gRPC сервер для UserService.
 type UserGRPCHandler struct {
-	pb.UnimplementedUserServiceServer     // Встраивание для обратной совместимости
-	userUsecase                   usecase.UserUsecase
+	pb.UnimplementedUserServiceServer // Встраивание для обратной совместимости
+	userUsecase                       usecase.UserUsecase
 }
 
 // NewUserGRPCHandler создает новый экземпляр UserGRPCHandler.
@@ -109,7 +108,6 @@ func (h *UserGRPCHandler) UpdateUser(ctx context.Context, req *pb.UpdateUserRequ
 		return nil, status.Errorf(codes.InvalidArgument, "Нет данных для обновления")
 	}
 
-
 	updatedUser, err := h.userUsecase.UpdateUser(ctx, userID, updateInput)
 	if err != nil {
 		switch {
@@ -125,7 +123,6 @@ func (h *UserGRPCHandler) UpdateUser(ctx context.Context, req *pb.UpdateUserRequ
 
 	return &pb.UpdateUserResponse{User: mapUserModelToProto(updatedUser)}, nil
 }
-
 
 // TODO: Реализуйте другие gRPC методы, определенные в вашем user.proto
 // Например, AuthenticateUser, DeleteUser и т.д.

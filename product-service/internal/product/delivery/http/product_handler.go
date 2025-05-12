@@ -8,9 +8,8 @@ import (
 
 	// ВАЖНО: Замените 'your_product_module_path' на имя вашего модуля product-service из go.mod
 	// Например: "github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
-	"your_product_module_path/internal/product/models"
-	"your_product_module_path/internal/product/usecase"
-
+	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
+	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/usecase"
 	// Рекомендуется использовать более продвинутый роутер, например chi или gorilla/mux
 	// import "github.com/go-chi/chi/v5"
 )
@@ -29,7 +28,7 @@ func NewProductHTTPHandler(uc usecase.ProductUsecase) *ProductHTTPHandler {
 // Этот метод адаптирован для стандартного http.ServeMux.
 // При использовании роутера типа chi, регистрация будет выглядеть иначе.
 func (h *ProductHTTPHandler) RegisterRoutes(router *http.ServeMux) {
-	router.HandleFunc("/api/products", h.handleProducts)      // GET (list), POST (create)
+	router.HandleFunc("/api/products", h.handleProducts)     // GET (list), POST (create)
 	router.HandleFunc("/api/products/", h.handleProductByID) // GET (by ID), PUT (update), DELETE (by ID)
 }
 
@@ -86,7 +85,6 @@ func (h *ProductHTTPHandler) createProduct(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Некорректный тип продукта. Допустимые значения: TICKET, MERCHANDISE", http.StatusBadRequest)
 		return
 	}
-
 
 	product, err := h.productUsecase.CreateProduct(r.Context(), input)
 	if err != nil {
@@ -165,7 +163,6 @@ func (h *ProductHTTPHandler) updateProduct(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Некорректный тип продукта для обновления", http.StatusBadRequest)
 		return
 	}
-
 
 	updatedProduct, err := h.productUsecase.UpdateProduct(r.Context(), productID, input)
 	if err != nil {

@@ -6,10 +6,7 @@ import (
 	"net/http"
 	"strings" // Для извлечения ID из URL в handleUserByID, если используется стандартный ServeMux
 
-	// ВАЖНО: Замените 'your_project_module' на имя вашего модуля из go.mod
-	"your_project_module/internal/user/models" // Может понадобиться для ответа
-	"your_project_module/internal/user/usecase"
-
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/usecase"
 	// Для более удобной маршрутизации и извлечения параметров URL можно использовать
 	// "github.com/go-chi/chi/v5" или "github.com/gorilla/mux".
 	// Здесь для простоты используется стандартный http.ServeMux,

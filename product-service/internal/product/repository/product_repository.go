@@ -8,7 +8,7 @@ import (
 
 	// ВАЖНО: Замените 'your_product_module_path' на имя вашего модуля product-service из go.mod
 	// Например: "github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
-	"your_product_module_path/internal/product/models"
+	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
 
 	"github.com/google/uuid"
 )
@@ -105,7 +105,6 @@ func (r *postgresProductRepository) ListAll(ctx context.Context) ([]*models.Prod
 
 	return products, nil
 }
-
 
 // Update обновляет существующую запись продукта в базе данных.
 func (r *postgresProductRepository) Update(ctx context.Context, product *models.Product) (*models.Product, error) {

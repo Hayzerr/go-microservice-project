@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
 	// ВАЖНО: Замените 'your_product_module_path' на имя вашего модуля product-service из go.mod
-	"your_product_module_path/internal/product/models"
-	"your_product_module_path/internal/product/repository"
+	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/repository"
 )
 
 var (
@@ -130,7 +130,9 @@ func (uc *productUsecase) UpdateProduct(ctx context.Context, id string, input Up
 		changed = true
 	}
 	if input.Price != nil && *input.Price != productToUpdate.Price {
-		if *input.Price < 0 { return nil, ErrInvalidInput } // Валидация цены
+		if *input.Price < 0 {
+			return nil, ErrInvalidInput
+		} // Валидация цены
 		productToUpdate.Price = *input.Price
 		changed = true
 	}
@@ -140,7 +142,9 @@ func (uc *productUsecase) UpdateProduct(ctx context.Context, id string, input Up
 		changed = true
 	}
 	if input.Stock != nil && *input.Stock != productToUpdate.Stock {
-		if *input.Stock < 0 { return nil, ErrInvalidInput } // Валидация остатка
+		if *input.Stock < 0 {
+			return nil, ErrInvalidInput
+		} // Валидация остатка
 		productToUpdate.Stock = *input.Stock
 		changed = true
 	}
@@ -149,7 +153,6 @@ func (uc *productUsecase) UpdateProduct(ctx context.Context, id string, input Up
 		productToUpdate.FestivalID = *input.FestivalID
 		changed = true
 	}
-
 
 	if !changed {
 		return currentProduct, nil // Ничего не изменилось
@@ -174,4 +177,3 @@ func (uc *productUsecase) DeleteProduct(ctx context.Context, id string) error {
 	}
 	return nil
 }
-

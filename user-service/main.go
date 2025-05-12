@@ -17,11 +17,11 @@ import (
 	"google.golang.org/grpc/reflection" // Для упрощения тестирования gRPC через grpcurl или Postman
 
 	// Импорты для вашего проекта (ВАЖНО: Замените 'your_project_module' на имя вашего модуля из go.mod)
-	grpcDelivery "github.com/example/microservices/user-service/internal/user/delivery/grpc" // Пакет для gRPC обработчиков
-	httpDelivery "github.com/example/microservices/user-service/internal/user/delivery/http" // Пакет для HTTP обработчиков
-	"github.com/example/microservices/user-service/internal/user/repository"                 // Пакет для репозитория
-	"github.com/example/microservices/user-service/internal/user/usecase"                    // Пакет для бизнес-логики
-	pb "github.com/example/microservices/user-service/pb"                                    // Путь к сгенерированным .pb.go файлам
+	pb "github.com/Hayzerr/go-microservice-project/pb"                                                 // Путь к сгенерированным .pb.go файлам
+	grpcDelivery "github.com/Hayzerr/go-microservice-project/user-service/internal/user/delivery/grpc" // Пакет для gRPC обработчиков
+	httpDelivery "github.com/Hayzerr/go-microservice-project/user-service/internal/user/delivery/http" // Пакет для HTTP обработчиков
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/repository"                 // Пакет для репозитория
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/usecase"                    // Пакет для бизнес-логики
 	// Для HTTP-роутера можно использовать стандартный http.ServeMux или более продвинутые,
 	// например, "github.com/gorilla/mux" или "github.com/go-chi/chi/v5"
 	// В этом примере используется стандартный http.ServeMux для простоты.

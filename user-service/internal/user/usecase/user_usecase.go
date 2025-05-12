@@ -6,8 +6,8 @@ import (
 	"time"   // Для обновления UpdatedAt
 
 	// ВАЖНО: Замените 'your_project_module' на имя вашего модуля из go.mod
-	"your_project_module/internal/user/models"
-	"your_project_module/internal/user/repository"
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/models"
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/repository"
 
 	"golang.org/x/crypto/bcrypt" // Для хеширования паролей
 )
@@ -209,4 +209,3 @@ func (uc *userUsecase) UpdateUser(ctx context.Context, id string, input UpdateUs
 	updatedUser.Password = "" // Убираем пароль перед возвратом
 	return updatedUser, nil
 }
-

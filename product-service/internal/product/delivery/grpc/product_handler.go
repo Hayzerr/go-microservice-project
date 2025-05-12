@@ -7,21 +7,20 @@ import (
 	// ВАЖНО: Замените 'your_product_module_path' на имя вашего модуля product-service из go.mod
 	// Например: "github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
 	// и "github.com/Hayzerr/go-microservice-project/pb"
-	"your_product_module_path/internal/product/models"
-	"your_product_module_path/internal/product/usecase"
-	pb "your_product_module_path/pb" // Сгенерированные proto-файлы
+	pb "github.com/Hayzerr/go-microservice-project/pb" // Сгенерированные proto-файлы
+	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
+	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/usecase"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // ProductGRPCHandler реализует gRPC сервер для ProductService.
 type ProductGRPCHandler struct {
 	pb.UnimplementedProductServiceServer // Встраивание для обратной совместимости
-	productUsecase                 usecase.ProductUsecase
+	productUsecase                       usecase.ProductUsecase
 }
 
 // NewProductGRPCHandler создает новый экземпляр ProductGRPCHandler.
