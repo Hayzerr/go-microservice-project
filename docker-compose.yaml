@@ -3,21 +3,28 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: micro
-      POSTGRES_USER: micro
-      POSTGRES_PASSWORD: micro
+      POSTGRES_DB: user_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
 
   user-service:
     build:
       context: .
       dockerfile: user-service/Dockerfile
-    depends_on: [postgres]
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      DB_DSN: "host=postgres user=micro password=micro dbname=micro sslmode=disable"
+      DB_DSN: "host=postgres user=postgres password=postgres dbname=user_service_db sslmode=disable"
       GRPC_PORT: "50051"
       HTTP_PORT: "8081"
     ports:
