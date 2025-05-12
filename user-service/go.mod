@@ -18,4 +18,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
 )
 
-replace github.com/Hayzerr/go-microservice-project/pb => ./pb
+replace github.com/Hayzerr/go-microservice-project/pb => ./github.com/Hayzerr/go-microservice-project/pb

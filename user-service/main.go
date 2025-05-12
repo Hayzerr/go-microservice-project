@@ -74,7 +74,8 @@ func main() {
 
 	// 3. Создание экземпляра бизнес-логики (usecase)
 	//    Предполагается, что у вас есть функция NewUserUsecase в пакете usecase.
-	userUsecase := usecase.NewUserUsecase(userRepo)
+	hasher := usecase.NewBcryptPasswordHasher(0) // 0 uses bcrypt.DefaultCost
+	userUsecase := usecase.NewUserUsecase(userRepo, hasher)
 	log.Println("Бизнес-логика пользователей инициализирована.")
 
 	// 4. Создание экземпляра gRPC обработчика

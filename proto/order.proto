@@ -12,24 +12,24 @@ message Order {
   double total = 4;
 }
 
+message GetOrderRequest {
+  string id = 1;
+}
+
 message CreateOrderRequest {
   string user_id = 1;
   repeated string product_ids = 2;
 }
 
-message GetOrderRequest {
+message DeleteOrderRequest {
   string id = 1;
 }
 
 message ListOrdersRequest {}
 
-message DeleteOrderRequest {
-  string id = 1;
-}
-
 service OrderService {
-  rpc CreateOrder(CreateOrderRequest) returns (Order);
   rpc GetOrder(GetOrderRequest) returns (Order);
   rpc ListOrders(ListOrdersRequest) returns (stream Order);
+  rpc CreateOrder(CreateOrderRequest) returns (Order);
   rpc DeleteOrder(DeleteOrderRequest) returns (google.protobuf.Empty);
 }

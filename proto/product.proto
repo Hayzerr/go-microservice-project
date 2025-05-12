@@ -71,9 +71,9 @@ message DeleteProductRequest {
 }
 
 service ProductService {
-  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse);
-  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
-  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
-  rpc UpdateProduct(UpdateProductRequest) returns (UpdateProductResponse);
-  rpc DeleteProduct(DeleteProductRequest) returns (google.protobuf.Empty);
+  rpc CreateProduct (CreateProductRequest) returns (CreateProductResponse);
+  rpc GetProduct (GetProductRequest) returns (GetProductResponse);
+  rpc ListProducts (ListProductsRequest) returns (ListProductsResponse);
+  rpc UpdateProduct (UpdateProductRequest) returns (UpdateProductResponse);
+  rpc DeleteProduct (DeleteProductRequest) returns (google.protobuf.Empty);
 }

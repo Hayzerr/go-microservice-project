@@ -1,6 +1,0 @@
-syntax = "proto3";
-
-package pb;
-option go_package = "github.com/Hayzerr/go-microservice-project/pb";
-
-message Empty {}

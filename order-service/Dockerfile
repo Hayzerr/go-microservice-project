@@ -2,12 +2,13 @@ FROM golang:1.22-alpine
 
 WORKDIR /app
 
-COPY order-service/go.mod order-service/go.sum ./
-COPY pb ./pb
+# Set up proper go module hierarchy for pb
+COPY github.com/Hayzerr/go-microservice-project/pb /app/github.com/Hayzerr/go-microservice-project/pb
+COPY order-service ./order-service
+WORKDIR /app/order-service
 
-RUN go mod download
-
-COPY order-service/. .
-
+RUN go mod edit -replace=github.com/Hayzerr/go-microservice-project/pb=../github.com/Hayzerr/go-microservice-project/pb
+RUN go mod tidy
 RUN go build -o service .
+
 CMD ["./service"]

@@ -16,4 +16,4 @@ require (
 	google.golang.org/protobuf v1.34.1 // indirect
 )
 
-replace github.com/Hayzerr/go-microservice-project/pb => ./pb
+replace github.com/Hayzerr/go-microservice-project/pb => ./github.com/Hayzerr/go-microservice-project/pb
