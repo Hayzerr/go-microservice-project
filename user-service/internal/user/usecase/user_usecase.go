@@ -70,6 +70,9 @@ type UserUsecase interface {
 	FindUserByID(ctx context.Context, id string) (*models.User, error)
 	UpdateUser(ctx context.Context, id string, input UpdateUserInput) (*models.User, error)
 	// TODO: Добавьте другие методы бизнес-логики (например, DeleteUser, ChangePassword)
+
+	ListUsers(ctx context.Context) ([]*models.User, error)
+	DeleteUser(ctx context.Context, id string) error
 }
 
 type userUsecase struct {
@@ -208,4 +211,19 @@ func (uc *userUsecase) UpdateUser(ctx context.Context, id string, input UpdateUs
 	}
 	updatedUser.Password = "" // Убираем пароль перед возвратом
 	return updatedUser, nil
+}
+
+func (uc *userUsecase) ListUsers(ctx context.Context) ([]*models.User, error) {
+	users, err := uc.userRepo.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range users {
+		u.Password = ""
+	}
+	return users, nil
+}
+
+func (uc *userUsecase) DeleteUser(ctx context.Context, id string) error {
+	return uc.userRepo.Delete(ctx, id)
 }

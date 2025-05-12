@@ -19,6 +19,7 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	Update(ctx context.Context, user *models.User) (*models.User, error)
 	Delete(ctx context.Context, id string) error // Новый метод
+	List(ctx context.Context) ([]*models.User, error)
 	// TODO: Добавьте другие методы по мере необходимости (List и т.д.)
 }
 
@@ -149,6 +150,27 @@ func (r *postgresUserRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+// Реализация:
+func (r *postgresUserRepository) List(ctx context.Context) ([]*models.User, error) {
+	query := `SELECT id, username, email, password_hash, created_at, updated_at FROM users`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, &u)
+	}
+
+	return users, nil
 }
 
 // Пример схемы таблицы 'users' для PostgreSQL:

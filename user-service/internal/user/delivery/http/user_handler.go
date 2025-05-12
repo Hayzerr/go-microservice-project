@@ -18,11 +18,15 @@ import (
 // UserHTTPHandler обрабатывает HTTP запросы, связанные с пользователями.
 type UserHTTPHandler struct {
 	userUsecase usecase.UserUsecase
+	jwtManager  usecase.JWTManager
 }
 
 // NewUserHTTPHandler создает новый экземпляр UserHTTPHandler.
-func NewUserHTTPHandler(uc usecase.UserUsecase) *UserHTTPHandler {
-	return &UserHTTPHandler{userUsecase: uc}
+func NewUserHTTPHandler(uc usecase.UserUsecase, jm usecase.JWTManager) *UserHTTPHandler {
+	return &UserHTTPHandler{
+		userUsecase: uc,
+		jwtManager:  jm,
+	}
 }
 
 // RegisterRoutes регистрирует HTTP маршруты для обработчика пользователей.
@@ -61,12 +65,21 @@ func (h *UserHTTPHandler) RegisterRoutes(router *http.ServeMux) {
 			h.getUserByID(w, r, userID)
 		case http.MethodPut:
 			h.updateUser(w, r, userID)
-		// case http.MethodDelete:
-		// 	h.deleteUser(w, r, userID) // TODO: Реализовать
+		case http.MethodDelete:
+			h.deleteUser(w, r, userID) // TODO: Реализовать
 		default:
 			http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
 		}
 	})
+
+	router.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			h.handleLogin(w, r)
+		} else {
+			http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
+		}
+	})
+
 	// router.HandleFunc("/api/auth/login", h.handleLogin) // TODO: Реализовать
 }
 
@@ -171,6 +184,75 @@ func (h *UserHTTPHandler) updateUser(w http.ResponseWriter, r *http.Request, use
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(updatedUser)
+}
+
+func (h *UserHTTPHandler) listUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.userUsecase.ListUsers(r.Context())
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Убираем пароли
+	for i := range users {
+		users[i].Password = ""
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(users)
+}
+
+func (h *UserHTTPHandler) deleteUser(w http.ResponseWriter, r *http.Request, userID string) {
+	err := h.userUsecase.DeleteUser(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, usecase.ErrUserNotFound) {
+			http.Error(w, "Пользователь не найден", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Ошибка при удалении пользователя: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent) // 204 No Content
+}
+
+func (h *UserHTTPHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
+	var requestBody struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		http.Error(w, "Некорректное тело запроса: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	if requestBody.Email == "" || requestBody.Password == "" {
+		http.Error(w, "Email и пароль не могут быть пустыми", http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.userUsecase.AuthenticateUser(r.Context(), requestBody.Email, requestBody.Password)
+	if err != nil {
+		http.Error(w, "Неверный email или пароль", http.StatusUnauthorized)
+		return
+	}
+
+	token, err := h.jwtManager.GenerateToken(user.ID)
+	if err != nil {
+		http.Error(w, "Не удалось сгенерировать токен", http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"user":  user,
+		"token": token,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // TODO: Реализуйте другие HTTP обработчики (login, delete, list).

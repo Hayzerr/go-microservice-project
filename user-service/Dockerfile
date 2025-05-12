@@ -8,6 +8,7 @@ COPY user-service ./user-service
 WORKDIR /app/user-service
 
 RUN go mod edit -replace=github.com/Hayzerr/go-microservice-project/pb=../github.com/Hayzerr/go-microservice-project/pb
+RUN apk update && apk add --no-cache git
 RUN go mod tidy
 RUN go build -o service .
 
