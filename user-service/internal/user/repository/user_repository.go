@@ -7,7 +7,7 @@ import (
 	"time"
 
 	// ВАЖНО: Замените 'your_project_module' на имя вашего модуля из go.mod
-	"your_project_module/internal/user/models"
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/models"
 
 	"github.com/google/uuid" // Для генерации UUID в качестве ID
 )

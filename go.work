@@ -1,5 +1,10 @@
 go 1.22
 
-directory ./user-service
-directory ./product-service
-directory ./order-service
+
+use (
+    ./user-service
+    ./product-service
+    ./order-service
+    ./pb
+)
+replace github.com/Hayzerr/go-microservice-project/pb => /Users/ruslanbakytuly/go/microservice-project/pb

@@ -5,9 +5,9 @@ import (
 	"errors" // Для проверки типов ошибок из usecase
 
 	// ВАЖНО: Замените 'your_project_module' на имя вашего модуля из go.mod
-	pb "your_project_module/pb" // Сгенерированные proto-файлы
-	"your_project_module/internal/user/models"
-	"your_project_module/internal/user/usecase"
+	pb "github.com/Hayzerr/go-microservice-project/pb" // Сгенерированные proto-файлы
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/models"
+	"github.com/Hayzerr/go-microservice-project/user-service/internal/user/usecase"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

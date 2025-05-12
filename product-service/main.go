@@ -11,7 +11,7 @@ import (
     "syscall"
     "time"
 
-    pb "github.com/example/microservices/pb"
+    pb "github.com/Hayzerr/go-microservice-project/pb"
     _ "github.com/lib/pq"
     "google.golang.org/grpc"
 )

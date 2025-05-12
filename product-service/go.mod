@@ -1,9 +1,9 @@
-module github.com/example/microservices/product-service
+module github.com/Hayzerr/go-microservice-project/product-service
 
 go 1.22
 
 require (
-	github.com/example/microservices/pb v0.0.0
+	github.com/Hayzerr/go-microservice-project/pb v0.0.0
 	github.com/lib/pq v1.10.9
 	google.golang.org/grpc v1.63.2
 )
@@ -16,4 +16,4 @@ require (
 	google.golang.org/protobuf v1.34.1 // indirect
 )
 
-replace github.com/example/microservices/pb => ./pb
+replace github.com/Hayzerr/go-microservice-project/pb => ./pb

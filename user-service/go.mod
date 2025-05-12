@@ -1,4 +1,4 @@
-module github.com/example/microservices/user-service
+module github.com/Hayzerr/go-microservice-project/user-service
 
 go 1.22
 
@@ -16,4 +16,4 @@ require (
 	google.golang.org/protobuf v1.34.1 // indirect
 )
 
-replace github.com/example/microservices/pb => ../pb
+replace github.com/Hayzerr/go-microservice-project/pb => ../pb
