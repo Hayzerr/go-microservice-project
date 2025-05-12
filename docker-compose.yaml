@@ -1,61 +1,105 @@
 version: "3.9"
+
 services:
-  postgres:
+  # ===================== POSTGRES for USER =====================
+  postgres-user:
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: user_service_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./user-service/db:/docker-entrypoint-initdb.d
+      - pgdata-user:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
-    ports:
-      - "5432:5432"
 
   user-service:
     build:
       context: .
       dockerfile: user-service/Dockerfile
     depends_on:
-      postgres:
+      postgres-user:
         condition: service_healthy
     environment:
-      DB_DSN: "host=postgres user=postgres password=postgres dbname=user_service_db sslmode=disable"
+      DB_DSN: "host=postgres-user user=postgres password=postgres dbname=user_service_db sslmode=disable"
       GRPC_PORT: "50051"
       HTTP_PORT: "8081"
     ports:
       - "8081:8081"
       - "50051:50051"
 
+  # ===================== POSTGRES for PRODUCT =====================
+  postgres-product:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: product_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./product-service/db:/docker-entrypoint-initdb.d
+      - pgdata-product:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   product-service:
     build:
       context: .
       dockerfile: product-service/Dockerfile
-    depends_on: [postgres]
+    depends_on:
+      postgres-product:
+        condition: service_healthy
     environment:
-      DB_DSN: "host=postgres user=micro password=micro dbname=micro sslmode=disable"
+      DB_DSN: "host=postgres-product user=postgres password=postgres dbname=product_service_db sslmode=disable"
       GRPC_PORT: "50052"
       HTTP_PORT: "8082"
     ports:
       - "8082:8082"
       - "50052:50052"
 
+  # ===================== POSTGRES for ORDER =====================
+  postgres-order:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: order_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./order-service/db:/docker-entrypoint-initdb.d
+      - pgdata-order:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   order-service:
     build:
       context: .
       dockerfile: order-service/Dockerfile
-    depends_on: [postgres]
+    depends_on:
+      postgres-order:
+        condition: service_healthy
     environment:
-      DB_DSN: "host=postgres user=micro password=micro dbname=micro sslmode=disable"
+      DB_DSN: "host=postgres-order user=postgres password=postgres dbname=order_service_db sslmode=disable"
       GRPC_PORT: "50053"
       HTTP_PORT: "8083"
     ports:
       - "8083:8083"
       - "50053:50053"
-
 volumes:
-  pgdata:
+  pgdata-user:
+  pgdata-product:
+  pgdata-order:

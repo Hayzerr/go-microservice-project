@@ -47,7 +47,7 @@ func main() {
 	grpcPort := getenv("PRODUCT_GRPC_PORT", "50052")
 	httpPort := getenv("PRODUCT_HTTP_PORT", "8082")
 	// Рекомендуется использовать отдельную БД или схему для product-service
-	dsn := getenv("PRODUCT_DB_DSN", "host=localhost port=5432 user=postgres password=postgres dbname=product_service_db sslmode=disable")
+	dsn := getenv("PRODUCT_DB_DSN", "host=postgres-product port=5432 user=postgres password=postgres dbname=product_service_db sslmode=disable")
 
 	log.Println("Запуск product-service...")
 
