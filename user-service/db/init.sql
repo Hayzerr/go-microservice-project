@@ -1,9 +1,8 @@
--- ./order-service/db/init.sql
-CREATE TABLE IF NOT EXISTS orders (
-                                      id UUID PRIMARY KEY,
-                                      user_id UUID NOT NULL,
-                                      product_id UUID NOT NULL,
-                                      quantity INTEGER NOT NULL,
-                                      status TEXT NOT NULL,
-                                      created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS users (
+                                     id UUID PRIMARY KEY,
+                                     username VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
