@@ -23,7 +23,7 @@ type CreateProductInput struct {
 	Price       float64
 	Type        models.ProductType
 	Stock       int
-	FestivalID  string
+	FestivalID  *int
 }
 
 // UpdateProductInput определяет структуру для входных данных при обновлении продукта.
@@ -33,16 +33,16 @@ type UpdateProductInput struct {
 	Price       *float64
 	Type        *models.ProductType
 	Stock       *int
-	FestivalID  *string
+	FestivalID  *int
 }
 
 // ProductUsecase определяет интерфейс для бизнес-логики, связанной с продуктами.
 type ProductUsecase interface {
 	CreateProduct(ctx context.Context, input CreateProductInput) (*models.Product, error)
-	GetProductByID(ctx context.Context, id string) (*models.Product, error)
+	GetProductByID(ctx context.Context, id int) (*models.Product, error)
 	ListProducts(ctx context.Context) ([]*models.Product, error)
-	UpdateProduct(ctx context.Context, id string, input UpdateProductInput) (*models.Product, error)
-	DeleteProduct(ctx context.Context, id string) error
+	UpdateProduct(ctx context.Context, id int, input UpdateProductInput) (*models.Product, error)
+	DeleteProduct(ctx context.Context, id int) error
 }
 
 type productUsecase struct {
@@ -83,7 +83,7 @@ func (uc *productUsecase) CreateProduct(ctx context.Context, input CreateProduct
 }
 
 // GetProductByID находит продукт по ID.
-func (uc *productUsecase) GetProductByID(ctx context.Context, id string) (*models.Product, error) {
+func (uc *productUsecase) GetProductByID(ctx context.Context, id int) (*models.Product, error) {
 	product, err := uc.productRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err // Ошибка репозитория
@@ -108,7 +108,7 @@ func (uc *productUsecase) ListProducts(ctx context.Context) ([]*models.Product, 
 }
 
 // UpdateProduct обновляет существующий продукт.
-func (uc *productUsecase) UpdateProduct(ctx context.Context, id string, input UpdateProductInput) (*models.Product, error) {
+func (uc *productUsecase) UpdateProduct(ctx context.Context, id int, input UpdateProductInput) (*models.Product, error) {
 	currentProduct, err := uc.productRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -148,10 +148,12 @@ func (uc *productUsecase) UpdateProduct(ctx context.Context, id string, input Up
 		productToUpdate.Stock = *input.Stock
 		changed = true
 	}
-	if input.FestivalID != nil && *input.FestivalID != productToUpdate.FestivalID {
-		// TODO: Валидация festival_id, если необходимо
-		productToUpdate.FestivalID = *input.FestivalID
-		changed = true
+	if input.FestivalID != nil {
+		// Сравниваем указатели на int
+		if productToUpdate.FestivalID == nil || *input.FestivalID != *productToUpdate.FestivalID {
+			productToUpdate.FestivalID = input.FestivalID
+			changed = true
+		}
 	}
 
 	if !changed {
@@ -167,7 +169,7 @@ func (uc *productUsecase) UpdateProduct(ctx context.Context, id string, input Up
 }
 
 // DeleteProduct удаляет продукт по ID.
-func (uc *productUsecase) DeleteProduct(ctx context.Context, id string) error {
+func (uc *productUsecase) DeleteProduct(ctx context.Context, id int) error {
 	err := uc.productRepo.Delete(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

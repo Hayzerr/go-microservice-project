@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	// ВАЖНО: Замените 'your_product_module_path' на имя вашего модуля product-service из go.mod
 	// Например: "github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
@@ -33,14 +34,24 @@ func mapProductModelToProto(product *models.Product) *pb.Product {
 	if product == nil {
 		return nil
 	}
+
+	// Преобразуем int в string для ID
+	productID := strconv.Itoa(product.ID)
+
+	// FestivalID может быть nil
+	var festivalID string
+	if product.FestivalID != nil {
+		festivalID = strconv.Itoa(*product.FestivalID)
+	}
+
 	return &pb.Product{
-		Id:          product.ID,
+		Id:          productID,
 		Name:        product.Name,
 		Description: product.Description,
 		Price:       product.Price,
-		Type:        mapProductTypeToProto(product.Type), // Используем маппер для enum
-		Stock:       int32(product.Stock),                // Преобразуем int в int32
-		FestivalId:  product.FestivalID,
+		Type:        mapProductTypeToProto(product.Type),
+		Stock:       int32(product.Stock),
+		FestivalId:  festivalID,
 		CreatedAt:   timestamppb.New(product.CreatedAt),
 		UpdatedAt:   timestamppb.New(product.UpdatedAt),
 	}
@@ -77,13 +88,23 @@ func (h *ProductGRPCHandler) CreateProduct(ctx context.Context, req *pb.CreatePr
 		return nil, status.Errorf(codes.InvalidArgument, "Имя, цена (>=0) и количество на складе (>=0) обязательны")
 	}
 
+	// Преобразуем festivalId из string в *int, если он задан
+	var festivalID *int
+	if req.GetFestivalId() != "" {
+		id, err := strconv.Atoi(req.GetFestivalId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "Неверный формат FestivalID: %v", err)
+		}
+		festivalID = &id
+	}
+
 	createInput := usecase.CreateProductInput{
 		Name:        req.GetName(),
 		Description: req.GetDescription(),
 		Price:       req.GetPrice(),
 		Type:        mapProtoToProductType(req.GetType()),
 		Stock:       int(req.GetStock()), // Преобразуем int32 в int
-		FestivalID:  req.GetFestivalId(),
+		FestivalID:  festivalID,
 	}
 
 	product, err := h.productUsecase.CreateProduct(ctx, createInput)
@@ -100,9 +121,15 @@ func (h *ProductGRPCHandler) CreateProduct(ctx context.Context, req *pb.CreatePr
 
 // GetProduct обрабатывает gRPC запрос на получение продукта по ID.
 func (h *ProductGRPCHandler) GetProduct(ctx context.Context, req *pb.GetProductRequest) (*pb.GetProductResponse, error) {
-	productID := req.GetId()
-	if productID == "" {
+	productIDStr := req.GetId()
+	if productIDStr == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "ID продукта не может быть пустым")
+	}
+
+	// Преобразуем ID из string в int
+	productID, err := strconv.Atoi(productIDStr)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Неверный формат ID: %v", err)
 	}
 
 	product, err := h.productUsecase.GetProductByID(ctx, productID)
@@ -135,9 +162,15 @@ func (h *ProductGRPCHandler) ListProducts(ctx context.Context, req *pb.ListProdu
 
 // UpdateProduct обрабатывает gRPC запрос на обновление продукта.
 func (h *ProductGRPCHandler) UpdateProduct(ctx context.Context, req *pb.UpdateProductRequest) (*pb.UpdateProductResponse, error) {
-	productID := req.GetId()
-	if productID == "" {
+	productIDStr := req.GetId()
+	if productIDStr == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "ID продукта для обновления не может быть пустым")
+	}
+
+	// Преобразуем ID из string в int
+	productID, err := strconv.Atoi(productIDStr)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Неверный формат ID: %v", err)
 	}
 
 	updateInput := usecase.UpdateProductInput{}
@@ -153,11 +186,6 @@ func (h *ProductGRPCHandler) UpdateProduct(ctx context.Context, req *pb.UpdatePr
 		priceVal := req.GetPrice().GetValue()
 		updateInput.Price = &priceVal
 	}
-	// Для enum ProductTypeProto, если он не обернут в wrappers.Value,
-	// он всегда будет иметь значение (даже если это *_UNSPECIFIED).
-	// Если вы хотите сделать его опциональным, его тоже нужно обернуть или
-	// добавить специальное значение "не изменять".
-	// В данном случае, если передано PRODUCT_TYPE_PROTO_UNSPECIFIED, мы можем это игнорировать.
 	if req.GetType() != pb.ProductTypeProto_PRODUCT_TYPE_PROTO_UNSPECIFIED {
 		typeVal := mapProtoToProductType(req.GetType())
 		updateInput.Type = &typeVal
@@ -167,8 +195,14 @@ func (h *ProductGRPCHandler) UpdateProduct(ctx context.Context, req *pb.UpdatePr
 		updateInput.Stock = &stockVal
 	}
 	if req.FestivalId != nil {
-		festIDVal := req.GetFestivalId().GetValue()
-		updateInput.FestivalID = &festIDVal
+		festIDStr := req.GetFestivalId().GetValue()
+		if festIDStr != "" {
+			festIDVal, err := strconv.Atoi(festIDStr)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "Неверный формат FestivalID: %v", err)
+			}
+			updateInput.FestivalID = &festIDVal
+		}
 	}
 
 	if updateInput.Name == nil && updateInput.Description == nil && updateInput.Price == nil &&
@@ -193,12 +227,18 @@ func (h *ProductGRPCHandler) UpdateProduct(ctx context.Context, req *pb.UpdatePr
 
 // DeleteProduct обрабатывает gRPC запрос на удаление продукта.
 func (h *ProductGRPCHandler) DeleteProduct(ctx context.Context, req *pb.DeleteProductRequest) (*emptypb.Empty, error) {
-	productID := req.GetId()
-	if productID == "" {
+	productIDStr := req.GetId()
+	if productIDStr == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "ID продукта для удаления не может быть пустым")
 	}
 
-	err := h.productUsecase.DeleteProduct(ctx, productID)
+	// Преобразуем ID из string в int
+	productID, err := strconv.Atoi(productIDStr)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Неверный формат ID: %v", err)
+	}
+
+	err = h.productUsecase.DeleteProduct(ctx, productID)
 	if err != nil {
 		if errors.Is(err, usecase.ErrProductNotFound) {
 			return nil, status.Errorf(codes.NotFound, "Продукт для удаления не найден: %v", err)

@@ -1,6 +1,6 @@
 module github.com/Hayzerr/go-microservice-project/product-service
 
-go 1.22
+go 1.21
 
 require (
 	github.com/Hayzerr/go-microservice-project/pb v0.0.0

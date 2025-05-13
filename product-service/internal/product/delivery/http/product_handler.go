@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings" // Для извлечения ID из URL
 
 	// ВАЖНО: Замените 'your_product_module_path' на имя вашего модуля product-service из go.mod
 	// Например: "github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
 	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
+	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/repository"
 	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/usecase"
 	// Рекомендуется использовать более продвинутый роутер, например chi или gorilla/mux
 	// import "github.com/go-chi/chi/v5"
@@ -17,11 +19,12 @@ import (
 // ProductHTTPHandler обрабатывает HTTP запросы, связанные с продуктами.
 type ProductHTTPHandler struct {
 	productUsecase usecase.ProductUsecase
+	repo           repository.ProductRepository
 }
 
 // NewProductHTTPHandler создает новый экземпляр ProductHTTPHandler.
-func NewProductHTTPHandler(uc usecase.ProductUsecase) *ProductHTTPHandler {
-	return &ProductHTTPHandler{productUsecase: uc}
+func NewProductHTTPHandler(uc usecase.ProductUsecase, repo repository.ProductRepository) *ProductHTTPHandler {
+	return &ProductHTTPHandler{productUsecase: uc, repo: repo}
 }
 
 // RegisterRoutes регистрирует HTTP маршруты для обработчика продуктов.
@@ -46,11 +49,17 @@ func (h *ProductHTTPHandler) handleProducts(w http.ResponseWriter, r *http.Reque
 
 // handleProductByID обрабатывает запросы к /api/products/{id}
 func (h *ProductHTTPHandler) handleProductByID(w http.ResponseWriter, r *http.Request) {
-	// Извлечение ID из пути для стандартного ServeMux
-	// Пример: /api/products/some-uuid -> id = "some-uuid"
-	id := strings.TrimPrefix(r.URL.Path, "/api/products/")
-	if id == "" || id == r.URL.Path { // Проверка, что ID действительно был извлечен
+	// Извлечение ID из пути
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/products/")
+	if idStr == "" || idStr == r.URL.Path {
 		http.Error(w, "ID продукта отсутствует в пути или путь некорректен", http.StatusBadRequest)
+		return
+	}
+
+	// Конвертация string в int
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Некорректный формат ID", http.StatusBadRequest)
 		return
 	}
 
@@ -102,8 +111,8 @@ func (h *ProductHTTPHandler) createProduct(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(product)
 }
 
-// getProductByID обрабатывает запрос на получение продукта по ID.
-func (h *ProductHTTPHandler) getProductByID(w http.ResponseWriter, r *http.Request, productID string) {
+// getProductByID обрабатывает запрос на получение продукта по ID
+func (h *ProductHTTPHandler) getProductByID(w http.ResponseWriter, r *http.Request, productID int) {
 	product, err := h.productUsecase.GetProductByID(r.Context(), productID)
 	if err != nil {
 		if errors.Is(err, usecase.ErrProductNotFound) {
@@ -115,7 +124,6 @@ func (h *ProductHTTPHandler) getProductByID(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(product)
 }
 
@@ -136,7 +144,7 @@ func (h *ProductHTTPHandler) listProducts(w http.ResponseWriter, r *http.Request
 }
 
 // updateProduct обрабатывает запрос на обновление продукта.
-func (h *ProductHTTPHandler) updateProduct(w http.ResponseWriter, r *http.Request, productID string) {
+func (h *ProductHTTPHandler) updateProduct(w http.ResponseWriter, r *http.Request, productID int) {
 	var input usecase.UpdateProductInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		http.Error(w, "Некорректное тело запроса: "+err.Error(), http.StatusBadRequest)
@@ -183,8 +191,8 @@ func (h *ProductHTTPHandler) updateProduct(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(updatedProduct)
 }
 
-// deleteProduct обрабатывает запрос на удаление продукта.
-func (h *ProductHTTPHandler) deleteProduct(w http.ResponseWriter, r *http.Request, productID string) {
+// deleteProduct обрабатывает запрос на удаление продукта
+func (h *ProductHTTPHandler) deleteProduct(w http.ResponseWriter, r *http.Request, productID int) {
 	err := h.productUsecase.DeleteProduct(r.Context(), productID)
 	if err != nil {
 		if errors.Is(err, usecase.ErrProductNotFound) {
@@ -195,5 +203,66 @@ func (h *ProductHTTPHandler) deleteProduct(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent) // Успешное удаление, нет тела ответа
+	// Возвращаем ответ с сообщением вместо пустого ответа
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Продукт с ID " + strconv.Itoa(productID) + " успешно удален",
+	})
+}
+
+// Получить все товары
+func (h *ProductHTTPHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
+	products, err := h.repo.ListAll(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(products)
+}
+
+// Добавить товар
+func (h *ProductHTTPHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	var p models.Product
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	createdProduct, err := h.repo.Create(r.Context(), &p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(createdProduct)
+}
+
+// Удалить товар
+func (h *ProductHTTPHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/products/")
+	if idStr == "" {
+		http.Error(w, "missing id", http.StatusBadRequest)
+		return
+	}
+
+	// Преобразуем ID из строки в int
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid id format", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.Delete(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Возвращаем ответ с сообщением вместо пустого ответа
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Продукт с ID " + idStr + " успешно удален",
+	})
 }

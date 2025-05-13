@@ -65,7 +65,7 @@ func main() {
 	log.Println("Успешное подключение к базе данных (product_service_db).")
 
 	// 2. Создание экземпляра репозитория
-	productRepo := repository.NewPostgresProductRepository(db)
+	productRepo := repository.NewProductRepository(db)
 	log.Println("Репозиторий продуктов инициализирован.")
 
 	// 3. Создание экземпляра бизнес-логики (usecase)
@@ -77,7 +77,7 @@ func main() {
 	log.Println("gRPC обработчик продуктов инициализирован.")
 
 	// 5. Создание экземпляра HTTP обработчика
-	productHTTPHandler := httpProductDelivery.NewProductHTTPHandler(productUsecase)
+	productHTTPHandler := httpProductDelivery.NewProductHTTPHandler(productUsecase, productRepo)
 	log.Println("HTTP обработчик продуктов инициализирован.")
 
 	var gRPCServer *grpc.Server
@@ -103,17 +103,17 @@ func main() {
 
 	// Запуск HTTP сервера
 	go func() {
-		router := http.NewServeMux()
-		router.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { // Общий health check
+		mux := http.NewServeMux()
+		mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { // Общий health check
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("ok"))
 		})
 		// Регистрация маршрутов для product HTTP handler
-		productHTTPHandler.RegisterRoutes(router)
+		productHTTPHandler.RegisterRoutes(mux)
 
 		httpServer = &http.Server{
 			Addr:    ":" + httpPort,
-			Handler: router,
+			Handler: mux,
 		}
 
 		log.Printf("Product-service HTTP сервер запущен на порту: %s", httpPort)

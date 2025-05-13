@@ -9,44 +9,33 @@ import (
 	// ВАЖНО: Замените 'your_product_module_path' на имя вашего модуля product-service из go.mod
 	// Например: "github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
 	"github.com/Hayzerr/go-microservice-project/product-service/internal/product/models"
-
-	"github.com/google/uuid"
 )
 
-// ProductRepository определяет интерфейс для взаимодействия с хранилищем данных продуктов.
+// ProductRepository определяет интерфейс для взаимодействия с хранилищем данных продуктов
 type ProductRepository interface {
 	Create(ctx context.Context, product *models.Product) (*models.Product, error)
-	GetByID(ctx context.Context, id string) (*models.Product, error)
-	ListAll(ctx context.Context) ([]*models.Product, error) // Метод для получения списка продуктов
+	GetByID(ctx context.Context, id int) (*models.Product, error)
+	ListAll(ctx context.Context) ([]*models.Product, error)
 	Update(ctx context.Context, product *models.Product) (*models.Product, error)
-	Delete(ctx context.Context, id string) error
-	// Можно добавить методы для фильтрации, например, ListByFestivalID, ListByType
+	Delete(ctx context.Context, id int) error
 }
 
-// postgresProductRepository реализует ProductRepository для PostgreSQL.
-type postgresProductRepository struct {
+// PostgresProductRepository реализует интерфейс ProductRepository для PostgreSQL
+type PostgresProductRepository struct {
 	db *sql.DB
 }
 
-// NewPostgresProductRepository создает новый экземпляр postgresProductRepository.
-func NewPostgresProductRepository(db *sql.DB) ProductRepository {
-	return &postgresProductRepository{db: db}
-}
-
-// Create создает новую запись продукта в базе данных.
-func (r *postgresProductRepository) Create(ctx context.Context, product *models.Product) (*models.Product, error) {
-	product.ID = uuid.NewString()
+// Create создает новую запись продукта в базе данных
+func (r *PostgresProductRepository) Create(ctx context.Context, product *models.Product) (*models.Product, error) {
 	product.CreatedAt = time.Now().UTC()
 	product.UpdatedAt = time.Now().UTC()
 
-	// Предполагается таблица 'products' со столбцами:
-	// id, name, description, price, type, stock, festival_id, created_at, updated_at
-	query := `INSERT INTO products (id, name, description, price, type, stock, festival_id, created_at, updated_at)
-			   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	query := `INSERT INTO products (name, description, price, type, stock, festival_id, created_at, updated_at)
+			   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			   RETURNING id, created_at, updated_at`
 
 	err := r.db.QueryRowContext(ctx, query,
-		product.ID, product.Name, product.Description, product.Price, product.Type, product.Stock, product.FestivalID, product.CreatedAt, product.UpdatedAt,
+		product.Name, product.Description, product.Price, product.Type, product.Stock, product.FestivalID, product.CreatedAt, product.UpdatedAt,
 	).Scan(&product.ID, &product.CreatedAt, &product.UpdatedAt)
 
 	if err != nil {
@@ -56,12 +45,11 @@ func (r *postgresProductRepository) Create(ctx context.Context, product *models.
 	return product, nil
 }
 
-// GetByID извлекает продукт из базы данных по его ID.
-func (r *postgresProductRepository) GetByID(ctx context.Context, id string) (*models.Product, error) {
+// GetByID извлекает продукт из базы данных по его ID
+func (r *PostgresProductRepository) GetByID(ctx context.Context, id int) (*models.Product, error) {
 	product := &models.Product{}
 	query := `SELECT id, name, description, price, type, stock, festival_id, created_at, updated_at
-			   FROM products
-			   WHERE id = $1`
+			   FROM products WHERE id = $1`
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&product.ID, &product.Name, &product.Description, &product.Price, &product.Type, &product.Stock, &product.FestivalID, &product.CreatedAt, &product.UpdatedAt,
@@ -76,9 +64,9 @@ func (r *postgresProductRepository) GetByID(ctx context.Context, id string) (*mo
 	return product, nil
 }
 
-// ListAll извлекает все продукты из базы данных.
+// ListAll извлекает все продукты из базы данных
 // В реальном приложении здесь, скорее всего, понадобится пагинация.
-func (r *postgresProductRepository) ListAll(ctx context.Context) ([]*models.Product, error) {
+func (r *PostgresProductRepository) ListAll(ctx context.Context) ([]*models.Product, error) {
 	query := `SELECT id, name, description, price, type, stock, festival_id, created_at, updated_at
 			   FROM products ORDER BY created_at DESC` // Пример сортировки
 
@@ -106,8 +94,8 @@ func (r *postgresProductRepository) ListAll(ctx context.Context) ([]*models.Prod
 	return products, nil
 }
 
-// Update обновляет существующую запись продукта в базе данных.
-func (r *postgresProductRepository) Update(ctx context.Context, product *models.Product) (*models.Product, error) {
+// Update обновляет существующую запись продукта в базе данных
+func (r *PostgresProductRepository) Update(ctx context.Context, product *models.Product) (*models.Product, error) {
 	product.UpdatedAt = time.Now().UTC()
 	query := `UPDATE products
 			   SET name = $1, description = $2, price = $3, type = $4, stock = $5, festival_id = $6, updated_at = $7
@@ -130,8 +118,8 @@ func (r *postgresProductRepository) Update(ctx context.Context, product *models.
 	return updatedProduct, nil
 }
 
-// Delete удаляет продукт из базы данных по его ID.
-func (r *postgresProductRepository) Delete(ctx context.Context, id string) error {
+// Delete удаляет продукт из базы данных по его ID
+func (r *PostgresProductRepository) Delete(ctx context.Context, id int) error {
 	query := `DELETE FROM products WHERE id = $1`
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
@@ -163,3 +151,8 @@ CREATE TABLE IF NOT EXISTS products (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 */
+
+// NewProductRepository создает новый экземпляр PostgresProductRepository
+func NewProductRepository(db *sql.DB) ProductRepository {
+	return &PostgresProductRepository{db: db}
+}
