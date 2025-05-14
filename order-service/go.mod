@@ -1,9 +1,11 @@
-module pb/github.com/Hayzerr/go-microservice-project/order-service
+module github.com/Hayzerr/go-microservice-project/order-service
 
 go 1.22
 
 require (
 	github.com/Hayzerr/go-microservice-project/pb v0.0.0
+	github.com/google/uuid v1.6.0
+	github.com/gorilla/mux v1.8.1
 	github.com/lib/pq v1.10.9
 	google.golang.org/grpc v1.63.2
 )
@@ -16,4 +18,4 @@ require (
 	google.golang.org/protobuf v1.34.1 // indirect
 )
 
-replace github.com/Hayzerr/go-microservice-project/pb => ./github.com/Hayzerr/go-microservice-project/pb
+replace github.com/Hayzerr/go-microservice-project/pb => ../pb
